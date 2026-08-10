@@ -39,7 +39,7 @@ function ItemTile({ item }: { item: InventoryItem }) {
       onClick={() => setExpanded((v) => !v)}
       className={`w-full text-left rounded-xl border transition-all duration-150 overflow-hidden
         ${expanded
-          ? "bg-white dark:bg-gray-800 border-blue-300 dark:border-blue-700 shadow-lg"
+          ? "bg-white dark:bg-gray-800 border-[#6CC14C] dark:border-[#326222] shadow-lg"
           : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 active:scale-[0.98]"
         }`}
     >
@@ -280,7 +280,7 @@ export function InventoryTable({ items }: InventoryTableProps) {
                 setSortField(field);
                 setSortDir(field === "changedOn" ? "desc" : "asc");
               }}
-              className="text-xs px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="text-xs px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-[#6CC14C]"
             >
               <option value="changedOn">Newest First</option>
               <option value="name">Customer</option>

@@ -83,8 +83,8 @@ export default function Home() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 mb-4">
-            <svg className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#6CC14C]/10 mb-4">
+            <svg className="w-8 h-8 text-[#6CC14C] animate-spin" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
@@ -108,7 +108,7 @@ export default function Home() {
           <p className="text-sm text-red-600 dark:text-red-400 mt-2">{error}</p>
           <button
             onClick={refresh}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            className="mt-4 px-4 py-2 bg-[#6CC14C] text-white rounded-lg hover:bg-[#326222] transition-colors text-sm font-medium"
           >
             Try Again
           </button>
@@ -122,32 +122,41 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* ── Header ── */}
-      <header className="bg-[#1e3a5f] text-white sticky top-0 z-20">
+      <header className="bg-[#1a1a1a] text-white sticky top-0 z-20">
         <div className="max-w-[1600px] mx-auto px-4 py-2.5 sm:px-6 sm:py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white/15 font-bold text-sm sm:text-base">
-                N
+              {/* Barcode icon */}
+              <div className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#6CC14C]/15">
+                <svg className="w-5 h-5 sm:w-5.5 sm:h-5.5 text-[#6CC14C]" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="2" y="4" width="2" height="16" rx="0.5" />
+                  <rect x="5.5" y="4" width="1" height="16" rx="0.3" />
+                  <rect x="8" y="4" width="2.5" height="16" rx="0.5" />
+                  <rect x="12" y="4" width="1.5" height="16" rx="0.3" />
+                  <rect x="15" y="4" width="2" height="16" rx="0.5" />
+                  <rect x="18.5" y="4" width="1" height="16" rx="0.3" />
+                  <rect x="21" y="4" width="1" height="16" rx="0.3" />
+                </svg>
               </div>
               <div>
                 <h1 className="text-sm sm:text-lg font-bold leading-tight">
                   NWO Inventory
                 </h1>
-                <p className="text-[10px] sm:text-xs text-blue-200/70 hidden sm:block">
+                <p className="text-[10px] sm:text-xs text-gray-400 hidden sm:block">
                   Renewal by Andersen — Northwest Ohio
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               {data.lastUpdated && (
-                <span className="text-[10px] sm:text-xs text-blue-200/60">
+                <span className="text-[10px] sm:text-xs text-gray-500">
                   {timeAgo(data.lastUpdated)}
                 </span>
               )}
               <button
                 onClick={refresh}
                 disabled={loading}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm font-medium bg-white/10 hover:bg-white/20 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg text-xs sm:text-sm font-medium bg-[#6CC14C]/15 text-[#6CC14C] hover:bg-[#6CC14C]/25 transition-colors disabled:opacity-50"
               >
                 <svg
                   className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${loading ? "animate-spin" : ""}`}

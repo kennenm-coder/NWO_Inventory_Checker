@@ -40,7 +40,7 @@ export function ProductTotals({ totals }: ProductTotalsProps) {
         <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">
           Total Items
         </span>
-        <span className="text-lg font-bold tabular-nums text-blue-600 dark:text-blue-400">
+        <span className="text-lg font-bold tabular-nums text-[#6CC14C] dark:text-[#6CC14C]">
           {totals.totalItems.toLocaleString()}
         </span>
       </div>
@@ -63,7 +63,7 @@ export function ProductTotalsBar({ totals }: ProductTotalsProps) {
           </span>
         </span>
       ))}
-      <span className="shrink-0 ml-auto text-[11px] font-semibold text-blue-600 dark:text-blue-400 tabular-nums">
+      <span className="shrink-0 ml-auto text-[11px] font-semibold text-[#6CC14C] dark:text-[#6CC14C] tabular-nums">
         Total: {totals.totalItems.toLocaleString()}
       </span>
     </div>

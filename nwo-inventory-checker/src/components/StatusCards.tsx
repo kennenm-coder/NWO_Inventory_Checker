@@ -35,7 +35,7 @@ export function StatusCards({ counts, activeFilter, onFilterChange }: StatusCard
               onClick={() => onFilterChange(isActive ? null : card.statusKey)}
               className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all
                 ${isActive
-                  ? "bg-blue-600 text-white shadow-md"
+                  ? "bg-[#6CC14C] text-white shadow-md"
                   : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
                 }`}
             >

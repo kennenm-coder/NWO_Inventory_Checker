@@ -4,8 +4,8 @@
   "description": "Live inventory status tracker for Renewal by Andersen — Northwest Ohio",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1e3a5f",
-  "theme_color": "#1e3a5f",
+  "background_color": "#1a1a1a",
+  "theme_color": "#1a1a1a",
   "orientation": "any",
   "icons": [
     {

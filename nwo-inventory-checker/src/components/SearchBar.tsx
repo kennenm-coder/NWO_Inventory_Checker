@@ -63,7 +63,7 @@ export function SearchBar({
       <select
         value={searchField}
         onChange={(e) => onFieldChange(e.target.value)}
-        className="shrink-0 px-2 py-2 sm:px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="shrink-0 px-2 py-2 sm:px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#6CC14C] focus:border-transparent"
       >
         {fields.map((f) => (
           <option key={f.value} value={f.value}>
@@ -84,7 +84,7 @@ export function SearchBar({
           value={inputValue}
           onChange={handleChange}
           placeholder="Search inventory..."
-          className="w-full pl-9 pr-9 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full pl-9 pr-9 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#6CC14C] focus:border-transparent"
         />
         {inputValue && (
           <button

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#1e3a5f"/>
+  <text x="256" y="200" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="160" fill="#ffffff">NWO</text>
+  <rect x="96" y="260" width="320" height="4" rx="2" fill="#3b82f6" opacity="0.5"/>
+  <text x="256" y="360" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="600" font-size="72" fill="#93c5fd">INVENTORY</text>
+  <rect x="136" y="390" width="240" height="36" rx="18" fill="#3b82f6" opacity="0.15"/>
+  <circle cx="168" cy="408" r="6" fill="#22c55e"/>
+  <rect x="188" y="402" width="60" height="12" rx="6" fill="#3b82f6" opacity="0.3"/>
+  <circle cx="280" cy="408" r="6" fill="#f59e0b"/>
+  <rect x="300" y="402" width="48" height="12" rx="6" fill="#3b82f6" opacity="0.3"/>
+</svg>

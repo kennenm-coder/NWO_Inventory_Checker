@@ -28,7 +28,7 @@ export function SearchBar({
   totalCount,
 }: SearchBarProps) {
   const [inputValue, setInputValue] = useState("");
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const debouncedSearch = useCallback(
     (value: string) => {

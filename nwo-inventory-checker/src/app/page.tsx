@@ -6,7 +6,48 @@ import { StatusCards } from "@/components/StatusCards";
 import { SearchBar } from "@/components/SearchBar";
 import { InventoryTable } from "@/components/InventoryTable";
 import { ProductTotals, ProductTotalsBar } from "@/components/ProductTotals";
-import type { InventoryItem } from "@/types/inventory";
+import type { InventoryItem, InventorySource } from "@/types/inventory";
+
+type SourceFilter = "all" | InventorySource;
+
+function SourceToggle({
+  value,
+  onChange,
+  counts,
+}: {
+  value: SourceFilter;
+  onChange: (v: SourceFilter) => void;
+  counts: { all: number; main: number; trim: number };
+}) {
+  const options: { key: SourceFilter; label: string }[] = [
+    { key: "all", label: "All" },
+    { key: "main", label: "Inventory" },
+    { key: "trim", label: "Trim" },
+  ];
+  return (
+    <div className="inline-flex shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-0.5">
+      {options.map((opt) => {
+        const active = value === opt.key;
+        return (
+          <button
+            key={opt.key}
+            onClick={() => onChange(opt.key)}
+            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+              active
+                ? "bg-[#6CC14C] text-white shadow-sm"
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+            }`}
+          >
+            {opt.label}
+            <span className={`ml-1 tabular-nums ${active ? "text-white/80" : "text-gray-400 dark:text-gray-500"}`}>
+              {counts[opt.key].toLocaleString()}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 // Register service worker for PWA (production only)
 function useServiceWorker() {
@@ -37,6 +78,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchField, setSearchField] = useState("all");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
 
   const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
@@ -50,11 +92,23 @@ export default function Home() {
     setStatusFilter(status);
   }, []);
 
-  // Filter items based on search and status
+  // Source counts for the toggle (main / trim / all)
+  const sourceCounts = useMemo(() => {
+    const items = data?.items ?? [];
+    const trim = items.reduce((n, i) => (i.source === "trim" ? n + 1 : n), 0);
+    return { all: items.length, main: items.length - trim, trim };
+  }, [data]);
+
+  // Filter items based on source, search, and status
   const filteredItems = useMemo(() => {
     if (!data) return [];
 
     let items = data.items;
+
+    // Source filter (Inventory / Trim / All)
+    if (sourceFilter !== "all") {
+      items = items.filter((item) => item.source === sourceFilter);
+    }
 
     // Status filter
     if (statusFilter) {
@@ -76,7 +130,10 @@ export default function Home() {
     }
 
     return items;
-  }, [data, searchQuery, searchField, statusFilter]);
+  }, [data, searchQuery, searchField, statusFilter, sourceFilter]);
+
+  const sourceTotal =
+    sourceFilter === "all" ? sourceCounts.all : sourceCounts[sourceFilter];
 
   // Loading state
   if (loading && !data) {
@@ -182,14 +239,19 @@ export default function Home() {
       <main className="max-w-[1600px] mx-auto">
         {/* Mobile layout — stacked, full-bleed */}
         <div className="md:hidden">
+          {/* Source toggle */}
+          <div className="px-4 pt-3 flex justify-center">
+            <SourceToggle value={sourceFilter} onChange={setSourceFilter} counts={sourceCounts} />
+          </div>
+
           {/* Search */}
-          <div className="px-4 pt-3 pb-2">
+          <div className="px-4 pt-2 pb-2">
             <SearchBar
               onSearch={handleSearch}
               onFieldChange={handleFieldChange}
               searchField={searchField}
               resultCount={filteredItems.length}
-              totalCount={data.items.length}
+              totalCount={sourceTotal}
             />
           </div>
 
@@ -222,14 +284,19 @@ export default function Home() {
             onFilterChange={handleStatusFilter}
           />
 
-          {/* Search */}
-          <SearchBar
-            onSearch={handleSearch}
-            onFieldChange={handleFieldChange}
-            searchField={searchField}
-            resultCount={filteredItems.length}
-            totalCount={data.items.length}
-          />
+          {/* Search + source toggle */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <SearchBar
+                onSearch={handleSearch}
+                onFieldChange={handleFieldChange}
+                searchField={searchField}
+                resultCount={filteredItems.length}
+                totalCount={sourceTotal}
+              />
+            </div>
+            <SourceToggle value={sourceFilter} onChange={setSourceFilter} counts={sourceCounts} />
+          </div>
 
           {/* Content: Table + Sidebar */}
           <div className="flex gap-6">

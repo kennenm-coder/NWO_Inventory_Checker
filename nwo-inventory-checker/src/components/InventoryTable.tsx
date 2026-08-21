@@ -11,6 +11,15 @@ interface InventoryTableProps {
   items: InventoryItem[];
 }
 
+/** Small pill marking a row that came from the trim inventory sheet */
+function TrimTag() {
+  return (
+    <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#6CC14C]/15 text-[#326222] dark:text-[#6CC14C]">
+      Trim
+    </span>
+  );
+}
+
 /** Parse the DD/MM/YYYY HH:mm:ss timestamp Orca returns into a comparable value */
 function parseOrcaDate(raw: string): number {
   if (!raw) return 0;
@@ -52,6 +61,7 @@ function ItemTile({ item }: { item: InventoryItem }) {
           {/* Row 1: Item title (description or name) + status */}
           <div className="flex items-start justify-between gap-2">
             <span className="font-semibold text-[13px] text-gray-900 dark:text-white leading-tight flex-1 min-w-0 line-clamp-2">
+              {item.source === "trim" && <TrimTag />}{" "}
               {title}
             </span>
             <StatusDot status={item.status} />
@@ -188,8 +198,11 @@ function DesktopTable({
               key={`${item.jobNumber}-${item.unitId}-${i}`}
               className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
             >
-              <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100 max-w-[300px] truncate">
-                {item.description || "—"}
+              <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100 max-w-[300px]">
+                <span className="flex items-center gap-1.5 min-w-0">
+                  {item.source === "trim" && <TrimTag />}
+                  <span className="truncate">{item.description || "—"}</span>
+                </span>
               </td>
               <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                 {item.name || "—"}

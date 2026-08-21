@@ -164,11 +164,10 @@ function computeProductTotals(items: InventoryItem[]): ProductTotals {
   };
 }
 
-// Map CSV row headers to our field names
-// The Orca CSV columns may use different header names — we'll normalize
-function parseRow(row: Record<string, string>): InventoryItem {
-  // Try multiple possible header names for each field
-  const get = (keys: string[]): string => {
+// Build a flexible, case-insensitive column getter for an Orca CSV row.
+// Tries multiple possible header names for each field.
+function makeGet(row: Record<string, string>) {
+  return (keys: string[]): string => {
     for (const key of keys) {
       // Try exact match first
       if (row[key] !== undefined && row[key] !== "") return row[key].trim();
@@ -180,6 +179,11 @@ function parseRow(row: Record<string, string>): InventoryItem {
     }
     return "";
   };
+}
+
+// Map main-inventory CSV row headers to our field names
+function parseRow(row: Record<string, string>): InventoryItem {
+  const get = makeGet(row);
 
   return {
     unitId: get(["Barcode", "Unit ID", "UnitID", "unit_id"]),
@@ -192,16 +196,77 @@ function parseRow(row: Record<string, string>): InventoryItem {
     soLineItem: get(["SO Line Item", "SOLineItem", "so_line_item"]),
     description: get(["Description", "description"]),
     changedOn: get(["Truck Ship Date", "Changed On", "Received Date"]),
+    source: "main",
   };
 }
 
-async function fetchFromOrca(): Promise<InventoryData> {
-  const apiUrl = process.env.ORCA_API_URL;
-  if (!apiUrl) {
-    throw new Error("ORCA_API_URL environment variable is not set");
+// The trim sheet has a different shape:
+//   Barcode, Name, Location, Bundles, Status, Received Quantity,
+//   8 Foot, 10 Foot, 12 Foot, 14 Foot, 16 Foot, Pieces Complete
+// Two row kinds:
+//   1) Bulk stock — Name is a profile like "EJ 5 1/2 (RBA White)", counts by length.
+//   2) Customer bundles — Name is "Lastname, First - JobNumber", staged on a trim rack.
+function parseTrimRow(row: Record<string, string>): InventoryItem {
+  const get = makeGet(row);
+
+  const name = get(["Name", "name"]);
+  const location = get(["Location", "location"]);
+  const bundles = get(["Bundles", "bundles"]);
+  const received = get(["Received Quantity", "Received Qty"]);
+  const pieces = get(["Pieces Complete", "Pieces"]);
+  const rawStatus = get(["Status", "status"]);
+
+  // Length breakdown (bulk stock rows)
+  const lengths: Array<[string, string]> = [
+    ["8", get(["8 Foot", "8 foot", "8ft"])],
+    ["10", get(["10 Foot", "10 foot", "10ft"])],
+    ["12", get(["12 Foot", "12 foot", "12ft"])],
+    ["14", get(["14 Foot", "14 foot", "14ft"])],
+    ["16", get(["16 Foot", "16 foot", "16ft"])],
+  ];
+  const hasLengths = lengths.some(([, v]) => v && v !== "0");
+
+  // Job number is embedded in the customer name suffix, e.g. "Graven, Karen - 8617"
+  const jobMatch = name.match(/-\s*([A-Za-z0-9]{3,})\s*$/);
+  const jobNumber = jobMatch ? jobMatch[1] : "";
+
+  // Synthesize a description so the row isn't blank in the table
+  let description: string;
+  if (hasLengths) {
+    const breakdown = lengths
+      .filter(([, v]) => v && v !== "0")
+      .map(([ft, v]) => `${ft}ft:${v}`)
+      .join(" ");
+    description = `Trim Stock${pieces ? ` — ${pieces} pcs` : ""}${breakdown ? ` (${breakdown})` : ""}`;
+  } else {
+    const parts = [
+      bundles ? `${bundles} bundle${bundles === "1" ? "" : "s"}` : "",
+      received ? `${received} pcs` : "",
+    ].filter(Boolean);
+    description = `Trim${parts.length ? ` — ${parts.join(", ")}` : ""}`;
   }
 
-  // Fetch CSV from Orca
+  return {
+    unitId: get(["Barcode", "Unit ID"]),
+    name,
+    vendor: "",
+    jobNumber,
+    customerPO: "",
+    // Trim rows rarely carry a status; treat on-hand trim as Stock so it badges/filters cleanly
+    status: normalizeStatus(rawStatus) || "Stock",
+    location,
+    soLineItem: "",
+    description,
+    changedOn: "",
+    source: "trim",
+  };
+}
+
+// Fetch one Orca sheet as CSV and map each row with the given parser.
+async function fetchSheet(
+  apiUrl: string,
+  parser: (row: Record<string, string>) => InventoryItem
+): Promise<InventoryItem[]> {
   const response = await fetch(apiUrl, {
     headers: { Accept: "text/csv" },
     next: { revalidate: 0 }, // Don't use Next.js cache — we have our own
@@ -213,7 +278,6 @@ async function fetchFromOrca(): Promise<InventoryData> {
 
   const csvText = await response.text();
 
-  // Parse CSV
   const parsed = Papa.parse<Record<string, string>>(csvText, {
     header: true,
     skipEmptyLines: true,
@@ -224,14 +288,37 @@ async function fetchFromOrca(): Promise<InventoryData> {
     console.warn("CSV parse warnings:", parsed.errors.slice(0, 5));
   }
 
-
-  // Map to our type
-  const items: InventoryItem[] = parsed.data
-    .map(parseRow)
+  return parsed.data
+    .map(parser)
     .filter((item) => item.name || item.jobNumber || item.status); // Filter out empty rows
+}
 
-  const statusCounts = computeStatusCounts(items);
-  const productTotals = computeProductTotals(items);
+async function fetchFromOrca(): Promise<InventoryData> {
+  const apiUrl = process.env.ORCA_API_URL;
+  if (!apiUrl) {
+    throw new Error("ORCA_API_URL environment variable is not set");
+  }
+  const trimUrl = process.env.ORCA_TRIM_API_URL;
+
+  // Fetch main inventory (required) and trim inventory (optional) in parallel.
+  const [mainItems, trimItems] = await Promise.all([
+    fetchSheet(apiUrl, parseRow),
+    trimUrl
+      ? fetchSheet(trimUrl, parseTrimRow).catch((err) => {
+          // Don't let a trim-sheet hiccup take down the whole app
+          console.error("Failed to fetch trim inventory:", err);
+          return [] as InventoryItem[];
+        })
+      : Promise.resolve([] as InventoryItem[]),
+  ]);
+
+  const items = [...mainItems, ...trimItems];
+
+  // Dashboard metrics stay scoped to the main inventory (matches the source sheet),
+  // with the trim count surfaced separately in the product totals.
+  const statusCounts = computeStatusCounts(mainItems);
+  const productTotals = computeProductTotals(mainItems);
+  productTotals.trimOrders = trimItems.length;
 
   return {
     items,

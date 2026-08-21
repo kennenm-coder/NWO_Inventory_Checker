@@ -1,3 +1,5 @@
+export type InventorySource = "main" | "trim";
+
 export interface InventoryItem {
   unitId: string;
   name: string;
@@ -9,6 +11,8 @@ export interface InventoryItem {
   soLineItem: string;
   description: string;
   changedOn: string;
+  /** Which Orca sheet this row came from */
+  source: InventorySource;
 }
 
 export type InventoryStatus =
@@ -35,6 +39,7 @@ export interface StatusCounts {
 }
 
 export interface ProductTotals {
+  /** Count of trim rows from the trim sheet */
   trimOrders: number;
   totalWindows: number;
   totalPD: number;

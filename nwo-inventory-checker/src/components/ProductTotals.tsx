@@ -11,6 +11,7 @@ const rows = [
   { label: "Patio Doors", key: "totalPD" as const, icon: "🚪" },
   { label: "Entry Doors", key: "totalED" as const, icon: "🏠" },
   { label: "Misc", key: "totalMisc" as const, icon: "📦" },
+  { label: "Trim", key: "trimOrders" as const, icon: "📏" },
 ];
 
 /** Desktop sidebar version */

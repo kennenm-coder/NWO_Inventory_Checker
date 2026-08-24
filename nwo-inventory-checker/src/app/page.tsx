@@ -6,6 +6,7 @@ import { StatusCards } from "@/components/StatusCards";
 import { SearchBar } from "@/components/SearchBar";
 import { InventoryTable } from "@/components/InventoryTable";
 import { ProductTotals, ProductTotalsBar } from "@/components/ProductTotals";
+import { computeProductTotals } from "@/lib/products";
 import type { InventoryItem, InventorySource } from "@/types/inventory";
 
 type SourceFilter = "all" | InventorySource;
@@ -131,6 +132,12 @@ export default function Home() {
 
     return items;
   }, [data, searchQuery, searchField, statusFilter, sourceFilter]);
+
+  // Product totals reflect whatever is currently filtered/searched
+  const productTotals = useMemo(
+    () => computeProductTotals(filteredItems),
+    [filteredItems]
+  );
 
   const sourceTotal =
     sourceFilter === "all" ? sourceCounts.all : sourceCounts[sourceFilter];
@@ -266,7 +273,7 @@ export default function Home() {
 
           {/* Product totals bar */}
           <div className="px-4 pb-2">
-            <ProductTotalsBar totals={data.productTotals} />
+            <ProductTotalsBar totals={productTotals} />
           </div>
 
           {/* Inventory tiles */}
@@ -305,7 +312,7 @@ export default function Home() {
             </div>
             <div className="w-64 flex-shrink-0">
               <div className="sticky top-20">
-                <ProductTotals totals={data.productTotals} />
+                <ProductTotals totals={productTotals} />
               </div>
             </div>
           </div>

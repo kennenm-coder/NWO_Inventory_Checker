@@ -34,6 +34,8 @@ export const viewport: Viewport = {
   themeColor: "#1a1a1a",
   width: "device-width",
   initialScale: 1,
+  // Draw into the notch / home-bar area; the phone screen pads for it with env(safe-area-inset-*).
+  viewportFit: "cover",
   maximumScale: 1,
   userScalable: false,
 };

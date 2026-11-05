@@ -10,7 +10,7 @@ interface SearchBarProps {
   totalCount: number;
 }
 
-const fields = [
+export const searchFields = [
   { value: "all", label: "All Fields", short: "All" },
   { value: "name", label: "Customer Name", short: "Name" },
   { value: "jobNumber", label: "Job Number", short: "Job #" },
@@ -65,7 +65,7 @@ export function SearchBar({
         onChange={(e) => onFieldChange(e.target.value)}
         className="shrink-0 px-2 py-2 sm:px-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#6CC14C] focus:border-transparent"
       >
-        {fields.map((f) => (
+        {searchFields.map((f) => (
           <option key={f.value} value={f.value}>
             {f.label}
           </option>

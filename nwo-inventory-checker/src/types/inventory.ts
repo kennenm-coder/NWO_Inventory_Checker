@@ -13,6 +13,23 @@ export interface InventoryItem {
   changedOn: string;
   /** Which Orca sheet this row came from */
   source: InventorySource;
+  /**
+   * Where a trim row was read from: the warehouse's Orca trim sheet ("orca"), or a
+   * vendor's own order spreadsheet ("vendor" -- trim ordered / received from North
+   * Coast, Wolf Creek, Laborie). Absent on main-inventory rows.
+   */
+  feed?: "orca" | "vendor";
+}
+
+/** What the vendor-order-sheet read did on the last refresh, so a gap is visible, not silent. */
+export interface TrimFeedStatus {
+  /** VENDOR_TRIM_URL and VENDOR_TRIM_KEY are both set */
+  configured: boolean;
+  ok: boolean;
+  /** When the vendor script read its sheets */
+  fetchedAt?: string;
+  tabs: { vendor: string; tab: string; kind: "Ordered" | "Received"; rows: number }[];
+  problems: string[];
 }
 
 export type InventoryStatus =
@@ -53,4 +70,5 @@ export interface InventoryData {
   statusCounts: StatusCounts;
   productTotals: ProductTotals;
   lastUpdated: string;
+  trimFeed?: TrimFeedStatus;
 }

@@ -48,25 +48,3 @@ export function ProductTotals({ totals }: ProductTotalsProps) {
     </div>
   );
 }
-
-/** Compact horizontal bar for mobile */
-export function ProductTotalsBar({ totals }: ProductTotalsProps) {
-  return (
-    <div className="flex items-center gap-3 overflow-x-auto px-1 py-1 scrollbar-hide">
-      {rows.map((row) => (
-        <span
-          key={row.label}
-          className="shrink-0 flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400"
-        >
-          <span>{row.icon}</span>
-          <span className="font-bold tabular-nums text-gray-700 dark:text-gray-300">
-            {totals[row.key].toLocaleString()}
-          </span>
-        </span>
-      ))}
-      <span className="shrink-0 ml-auto text-[11px] font-semibold text-[#6CC14C] dark:text-[#6CC14C] tabular-nums">
-        Total: {totals.totalItems.toLocaleString()}
-      </span>
-    </div>
-  );
-}

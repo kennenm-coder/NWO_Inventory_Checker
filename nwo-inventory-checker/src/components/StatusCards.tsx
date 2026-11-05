@@ -8,7 +8,7 @@ interface StatusCardsProps {
   onFilterChange: (status: string | null) => void;
 }
 
-const chips = [
+export const statusChips = [
   { label: "All", countKey: "total" as const, statusKey: null },
   { label: "Backordered", countKey: "backordered" as const, statusKey: "Backordered" },
   { label: "Not Received", countKey: "notReceived" as const, statusKey: "Not Received" },
@@ -23,7 +23,7 @@ const chips = [
 export function StatusCards({ counts, activeFilter, onFilterChange }: StatusCardsProps) {
   return (
     <div className="flex gap-1.5 overflow-x-auto pb-1 px-4 md:px-0 scrollbar-hide">
-      {chips.map((chip) => {
+      {statusChips.map((chip) => {
         const isActive = activeFilter === chip.statusKey;
         const count = counts[chip.countKey];
         return (

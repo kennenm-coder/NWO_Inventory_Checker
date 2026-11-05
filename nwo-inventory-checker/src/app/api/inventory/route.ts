@@ -6,6 +6,7 @@ import type {
   StatusCounts,
 } from "@/types/inventory";
 import { computeProductTotals } from "@/lib/products";
+import { fetchVendorTrim } from "@/lib/vendorTrim";
 
 // In-memory cache to avoid hammering the Orca API
 let cachedData: InventoryData | null = null;
@@ -106,6 +107,7 @@ function parseRow(row: Record<string, string>): InventoryItem {
     description: get(["Description", "description"]),
     changedOn: get(["Truck Ship Date", "Changed On", "Received Date"]),
     source: "main",
+    feed: undefined,
   };
 }
 
@@ -168,6 +170,7 @@ function parseTrimRow(row: Record<string, string>): InventoryItem {
     description,
     changedOn: "",
     source: "trim",
+    feed: "orca",
   };
 }
 
@@ -209,8 +212,10 @@ async function fetchFromOrca(): Promise<InventoryData> {
   }
   const trimUrl = process.env.ORCA_TRIM_API_URL;
 
-  // Fetch main inventory (required) and trim inventory (optional) in parallel.
-  const [mainItems, trimItems] = await Promise.all([
+  // Fetch main inventory (required), the Orca trim sheet (optional) and the vendors'
+  // own order sheets (optional) in parallel -- the vendor read costs no extra time
+  // and is made on the same request as Orca, so it is exactly as live.
+  const [mainItems, trimItems, vendor] = await Promise.all([
     fetchSheet(apiUrl, parseRow),
     trimUrl
       ? fetchSheet(trimUrl, parseTrimRow).catch((err) => {
@@ -219,21 +224,24 @@ async function fetchFromOrca(): Promise<InventoryData> {
           return [] as InventoryItem[];
         })
       : Promise.resolve([] as InventoryItem[]),
+    fetchVendorTrim(process.env.VENDOR_TRIM_URL, process.env.VENDOR_TRIM_KEY),
   ]);
 
-  const items = [...mainItems, ...trimItems];
+  const vendorItems = vendor.items;
+  const items = [...mainItems, ...trimItems, ...vendorItems];
 
   // Dashboard metrics stay scoped to the main inventory (matches the source sheet),
   // with the trim count surfaced separately in the product totals.
   const statusCounts = computeStatusCounts(mainItems);
   const productTotals = computeProductTotals(mainItems);
-  productTotals.trimOrders = trimItems.length;
+  productTotals.trimOrders = trimItems.length + vendorItems.length;
 
   return {
     items,
     statusCounts,
     productTotals,
     lastUpdated: new Date().toISOString(),
+    trimFeed: vendor.feed,
   };
 }
 
@@ -251,9 +259,11 @@ export async function GET(request: Request) {
     // Fetch fresh data
     const data = await fetchFromOrca();
 
-    // Update cache
+    // Update cache. If the vendor feed is configured but failed, cache only briefly so
+    // the next poll retries it, instead of showing no trim orders for the full 5 minutes.
     cachedData = data;
-    cacheTimestamp = now;
+    const vendorDown = data.trimFeed?.configured && !data.trimFeed.ok;
+    cacheTimestamp = vendorDown ? now - CACHE_DURATION_MS + 30_000 : now;
 
     return NextResponse.json(data);
   } catch (error) {

@@ -5,11 +5,12 @@ import { useInventory } from "@/hooks/useInventory";
 import { StatusCards } from "@/components/StatusCards";
 import { SearchBar } from "@/components/SearchBar";
 import { InventoryTable } from "@/components/InventoryTable";
-import { ProductTotals, ProductTotalsBar } from "@/components/ProductTotals";
+import { ProductTotals } from "@/components/ProductTotals";
+import { MobileInventory } from "@/components/mobile/MobileInventory";
+import type { SourceFilter } from "@/components/mobile/FilterSheet";
 import { computeProductTotals } from "@/lib/products";
-import type { InventoryItem, InventorySource } from "@/types/inventory";
-
-type SourceFilter = "all" | InventorySource;
+import { timeAgo } from "@/lib/time";
+import type { InventoryItem } from "@/types/inventory";
 
 function SourceToggle({
   value,
@@ -62,17 +63,6 @@ function useServiceWorker() {
   }, []);
 }
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins === 1) return "1 min ago";
-  if (mins < 60) return `${mins} mins ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs === 1) return "1 hour ago";
-  return `${hrs} hours ago`;
-}
-
 export default function Home() {
   useServiceWorker();
   const { data, loading, error, refresh } = useInventory();
@@ -91,6 +81,13 @@ export default function Home() {
 
   const handleStatusFilter = useCallback((status: string | null) => {
     setStatusFilter(status);
+  }, []);
+
+  const handleClearAll = useCallback(() => {
+    setSearchQuery("");
+    setSearchField("all");
+    setStatusFilter(null);
+    setSourceFilter("all");
   }, []);
 
   // Source counts for the toggle (main / trim / all)
@@ -186,7 +183,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* ── Header ── */}
-      <header className="bg-[#1a1a1a] text-white sticky top-0 z-20">
+      <header className="hidden md:block bg-[#1a1a1a] text-white sticky top-0 z-20">
         <div className="max-w-[1600px] mx-auto px-4 py-2.5 sm:px-6 sm:py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -242,44 +239,37 @@ export default function Home() {
         </div>
       </header>
 
+      {/* A configured vendor feed that is failing must say so: a quiet gap looks exactly
+          like "no trim orders". */}
+      {data.trimFeed?.configured && !data.trimFeed.ok && (
+        <div className="bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 text-xs sm:text-sm px-4 py-2 text-center">
+          Vendor trim orders are not up to date: {data.trimFeed.problems.join(" · ") || "feed unavailable"}
+        </div>
+      )}
+
       {/* ── Main content ── */}
       <main className="max-w-[1600px] mx-auto">
-        {/* Mobile layout — stacked, full-bleed */}
+        {/* Phone layout — its own screen (components/mobile), not the desktop one squeezed */}
         <div className="md:hidden">
-          {/* Source toggle */}
-          <div className="px-4 pt-3 flex justify-center">
-            <SourceToggle value={sourceFilter} onChange={setSourceFilter} counts={sourceCounts} />
-          </div>
-
-          {/* Search */}
-          <div className="px-4 pt-2 pb-2">
-            <SearchBar
-              onSearch={handleSearch}
-              onFieldChange={handleFieldChange}
-              searchField={searchField}
-              resultCount={filteredItems.length}
-              totalCount={sourceTotal}
-            />
-          </div>
-
-          {/* Status filter chips */}
-          <div className="px-0 pb-2">
-            <StatusCards
-              counts={data.statusCounts}
-              activeFilter={statusFilter}
-              onFilterChange={handleStatusFilter}
-            />
-          </div>
-
-          {/* Product totals bar */}
-          <div className="px-4 pb-2">
-            <ProductTotalsBar totals={productTotals} />
-          </div>
-
-          {/* Inventory tiles */}
-          <div className="px-4 pb-6">
-            <InventoryTable items={filteredItems} />
-          </div>
+          <MobileInventory
+            items={filteredItems}
+            totalCount={sourceTotal}
+            statusCounts={data.statusCounts}
+            productTotals={productTotals}
+            sourceCounts={sourceCounts}
+            searchQuery={searchQuery}
+            onSearch={handleSearch}
+            searchField={searchField}
+            onFieldChange={handleFieldChange}
+            statusFilter={statusFilter}
+            onStatusFilter={handleStatusFilter}
+            sourceFilter={sourceFilter}
+            onSourceFilter={setSourceFilter}
+            lastUpdated={data.lastUpdated}
+            loading={loading}
+            onRefresh={refresh}
+            onClearAll={handleClearAll}
+          />
         </div>
 
         {/* Desktop layout — padded, with sidebar */}

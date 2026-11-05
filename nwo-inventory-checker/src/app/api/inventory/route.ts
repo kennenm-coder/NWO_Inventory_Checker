@@ -224,7 +224,11 @@ async function fetchFromOrca(): Promise<InventoryData> {
           return [] as InventoryItem[];
         })
       : Promise.resolve([] as InventoryItem[]),
-    fetchVendorTrim(process.env.VENDOR_TRIM_URL, process.env.VENDOR_TRIM_KEY),
+    fetchVendorTrim({
+      csvUrl: process.env.VENDOR_TRIM_CSV_URL,
+      scriptUrl: process.env.VENDOR_TRIM_URL,
+      scriptKey: process.env.VENDOR_TRIM_KEY,
+    }),
   ]);
 
   const vendorItems = vendor.items;

@@ -1,7 +1,15 @@
+import Papa from "papaparse";
 import type { InventoryItem, TrimFeedStatus } from "@/types/inventory";
 
-// The vendors' own order spreadsheets (North Coast, Wolf Creek, Laborie), read
-// straight from the Apps Script that already writes to them. That script answers
+// The vendors' own order spreadsheets (North Coast, Wolf Creek, Laborie). Two ways in:
+//
+//   1. A published CSV tab of the Live Status spreadsheet (VENDOR_TRIM_CSV_URL) -- the
+//      doc that already links the three vendor sheets in and works out Ordered / Received
+//      for every row. No script needed; this is the one to use. See parseLiveSheetRows.
+//   2. The Apps Script `rows` action (VENDOR_TRIM_URL + VENDOR_TRIM_KEY), for anyone who
+//      has that script. Everything above parseLiveSheetRows is that path.
+//
+// The script path reads straight from the Apps Script that already writes to the sheets. That script answers
 // the `rows` action with the raw cells of each vendor's Ordered tab and its
 // Received tab(s) -- at request time, so these rows are exactly as live as the
 // Orca feed beside them (and not subject to IMPORTRANGE's own refresh schedule).
@@ -177,8 +185,102 @@ export function parseVendorTrim(payload: VendorTrimPayload): {
   return { items, tabs, problems };
 }
 
-/** Never throws: a vendor-feed hiccup must not take the Orca inventory down with it. */
-export async function fetchVendorTrim(
+// ---- Path 1: the Live Status spreadsheet, published as CSV -------------------------------
+//
+// How that spreadsheet makes these rows (read from its formulas, 2026-11-05):
+//   - each vendor's Ordered tab and Received tab are linked in with IMPORTRANGE;
+//   - a row is "Ordered" simply by being on the Ordered tab (=IF(COUNTA(A4:J4)>0,"Ordered","")),
+//     and "Received" when it comes from the Received tab;
+//   - the three vendors are stacked into one list and laid out in Orca's column order.
+// So the status here is the spreadsheet's own, not something this app works out.
+//
+// Two shapes of published tab are understood, found by their header NAMES, not positions:
+//   - a purpose-made small tab with the headers Name, Vendor, Status, Job Order Number,
+//     Description, Date Ordered (the recommended one); or
+//   - the "RAW Paint and Stain Inventory Helper" tab itself, whose right-hand block has
+//     Name, Vendor, Status, Description, Job Order Number and a column with NO header
+//     (just before "Component Ordered") that holds the date ordered.
+// Rows whose Status is not Ordered/Received (the stacked sections' own header rows) are skipped.
+
+const cellAt = (row: string[], i: number): string => (i >= 0 && i < row.length ? clean(row[i] ?? "") : "");
+const lc = (v: string) => (v ?? "").trim().toLowerCase();
+
+export function parseLiveSheetRows(rows: string[][]): {
+  items: InventoryItem[];
+  tabs: TrimFeedStatus["tabs"];
+  problems: string[];
+} {
+  const items: InventoryItem[] = [];
+  const tabs: TrimFeedStatus["tabs"] = [];
+  const problems: string[] = [];
+
+  // The header row: the first of the top rows that names all four columns we need.
+  let hr = -1;
+  for (let r = 0; r < Math.min(rows.length, 8); r++) {
+    const names = (rows[r] ?? []).map(lc);
+    if (["name", "vendor", "status", "description"].every((n) => names.includes(n))) { hr = r; break; }
+  }
+  if (hr === -1) {
+    problems.push("couldn't find the Name / Vendor / Status / Description headers in the published tab");
+    return { items, tabs, problems };
+  }
+  const head = (rows[hr] ?? []).map(lc);
+  const iName = head.indexOf("name");
+  // Same-named headers can also appear in blocks to the left; the block we want starts at "Name".
+  const iVendor = head.indexOf("vendor", iName);
+  const iStatus = head.indexOf("status", iName);
+  const iDesc = head.indexOf("description", iName);
+  const iJob = head.indexOf("job order number", iName);
+  let iDate = head.indexOf("date ordered", iName);
+  if (iDate === -1) {
+    // The raw helper tab: the date sits in the column with no header just before "Component Ordered".
+    const co = head.indexOf("component ordered");
+    if (co > 0 && head[co - 1] === "") iDate = co - 1;
+  }
+
+  const seen = new Map<string, { vendor: string; kind: "Ordered" | "Received"; rows: number }>();
+  for (let r = hr + 1; r < rows.length; r++) {
+    const row = rows[r] ?? [];
+    const status = lc(cellAt(row, iStatus));
+    if (status !== "ordered" && status !== "received") continue; // blank rows and the stacked sections' header rows
+    const kind: "Ordered" | "Received" = status === "ordered" ? "Ordered" : "Received";
+    const name = cellAt(row, iName);
+    if (!name || /^customer\b/i.test(name)) continue;
+    const rawVendor = cellAt(row, iVendor);
+    if (!rawVendor) continue;
+    const vendor = VENDOR_LABEL[rawVendor.toUpperCase()] ?? titleCase(rawVendor);
+    const abbr = vendor.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase();
+
+    items.push({
+      unitId: `VND-${abbr}-${kind === "Ordered" ? "O" : "R"}-${r + 1}`,
+      name,
+      vendor,
+      jobNumber: cellAt(row, iJob) || jobNumberFrom(name),
+      customerPO: "",
+      status: kind,
+      location: "",
+      soLineItem: "",
+      description: cleanDescription(row[iDesc] ?? "") || "Trim order",
+      changedOn: cellAt(row, iDate),
+      source: "trim",
+      feed: "vendor",
+    });
+    const k = `${vendor}|${kind}`;
+    const t = seen.get(k) ?? { vendor, kind, rows: 0 };
+    t.rows++;
+    seen.set(k, t);
+  }
+
+  for (const t of seen.values()) tabs.push({ vendor: t.vendor, tab: "Live Status sheet", kind: t.kind, rows: t.rows });
+  // An empty vendor would otherwise read as "nothing ordered / received yet".
+  for (const v of Object.values(VENDOR_LABEL)) {
+    if (!seen.has(`${v}|Ordered`) && !seen.has(`${v}|Received`)) problems.push(`${v}: no rows in the published tab`);
+  }
+  return { items, tabs, problems };
+}
+
+/** Path 2: the Apps Script `rows` action. Never throws. */
+async function fetchViaScript(
   url: string | undefined,
   key: string | undefined
 ): Promise<{ items: InventoryItem[]; feed: TrimFeedStatus }> {
@@ -230,4 +332,36 @@ export async function fetchVendorTrim(
       feed: { configured: true, ok: false, tabs: [], problems: [message] },
     };
   }
+}
+
+/**
+ * The vendor trim orders: from the Live Status spreadsheet's published CSV tab when
+ * VENDOR_TRIM_CSV_URL is set (preferred -- no script), otherwise from the Apps Script
+ * when VENDOR_TRIM_URL + VENDOR_TRIM_KEY are. Neither set = not configured, and the
+ * checker simply shows no vendor rows. Never throws: a hiccup here must not take the
+ * Orca inventory down with it.
+ */
+export async function fetchVendorTrim(opts: {
+  csvUrl?: string;
+  scriptUrl?: string;
+  scriptKey?: string;
+}): Promise<{ items: InventoryItem[]; feed: TrimFeedStatus }> {
+  const { csvUrl, scriptUrl, scriptKey } = opts;
+  if (csvUrl) {
+    try {
+      const res = await fetch(csvUrl, { cache: "no-store", redirect: "follow", signal: AbortSignal.timeout(25_000) });
+      const text = await res.text();
+      if (!res.ok) throw new Error(`the published tab answered HTTP ${res.status}`);
+      // A sign-in or error page is HTML; a CSV never starts with a tag.
+      if (/^\s*</.test(text)) throw new Error("the link didn't return CSV -- is the tab published to the web as CSV?");
+      const parsed = Papa.parse<string[]>(text, { skipEmptyLines: false });
+      const { items, tabs, problems } = parseLiveSheetRows(parsed.data);
+      return { items, feed: { configured: true, ok: problems.length === 0, tabs, problems } };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "unknown error";
+      console.error("Vendor trim feed failed:", message);
+      return { items: [], feed: { configured: true, ok: false, tabs: [], problems: [message] } };
+    }
+  }
+  return fetchViaScript(scriptUrl, scriptKey);
 }
